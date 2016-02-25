@@ -71,6 +71,8 @@ int main(int argc, char const *argv[])
     We are going to allocate memory of size records_per_chunk.
     That's the true size of the chunk and not chunk_size?
     Same applies for the 2nd part of the OR where we need to check records_in_last_chunk.
+    
+    THIS NEEDS TO BE FIXED.  FORGOT
   */
   if ((records_per_chunk > mem_size) || ((records_per_chunk == mem_size) && (records_in_last_chunk > mem_size % block_size))){
   	printf("Not enough runs \n");
@@ -115,12 +117,16 @@ void phase1 (FILE* fp){
         Not sure why it was multiplying by sizeof(Record).
         I'm assuming you wanted to do a calculation like the ones above (for records_per_chunk and records_in_last_chunk).
         If that's the case, then we can just use records_in_last_chunk?
+        
+        IM MULTIPLYING BU SIZEOF(RECORD) BECAUSE REALLOC TAKES NUMBER OF BYTES AND CALLOC NUMBER OF ELEMENTS
       */
 
 			Record * small_buffer = (Record *) realloc(buffer, records_in_last_chunk);
 
       /* NOTE FOR VALERY 
         Don't we want to sort the remaining records which is of size records_in_last_chunk?
+      
+      	TRUE. MY BAD
       */
 			qsort (small_buffer, records_in_last_chunk, sizeof(Record), compare);
 			
@@ -131,6 +137,7 @@ void phase1 (FILE* fp){
 
       /* NOTE FOR VALERY
         I think we should free the memory. This way is okay right?
+        CERTAINLY
       */
       free(small_buffer);
 		}
