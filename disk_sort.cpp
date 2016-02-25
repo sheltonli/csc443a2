@@ -103,7 +103,7 @@ void phase1 (FILE* fp){
       //print_buffer_content (buffer);
       result = fread (buffer, sizeof(Record), records_per_chunk, fp);
     }
-    // free(buffer);
+
     /* Read last chunk */
     if (last_chunk != 0){
       int buf_size = last_chunk*block_size*sizeof(Record);
