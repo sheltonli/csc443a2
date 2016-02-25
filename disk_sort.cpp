@@ -1,18 +1,25 @@
-#include <stdlib.h>
 #include <stdio.h>
-#include <unistd.h>
+#include <stdlib.h>
+#include <string.h>
 
-int ram_size;
+int mem_size;
 int block_size;
 int num_runs;
-
+int file_size;
+int chunk_size;
+int records_per_chunk;
+int last_chunk;
+int records_in_last_chunk;
 
 typedef struct record {
   int uid1;
   int uid2;
 } Record;
 
-void phase1 (FILE* fp, int num_records);
+void read_into_buffer(FILE * fp, Record * buffer);
+void phase1 (FILE* fp);
+
+
 /**
 * Compares two records a and b 
 * with respect to the value of the integer field f.
@@ -40,12 +47,32 @@ int main(int argc, char const *argv[])
     exit(EXIT_FAILURE);
   }
 
-  ram_size = atoi(argv[2]);
+  fseek(fp, 0, SEEK_END);
+  long fsize = ftell(fp);
+  fseek(fp, 0, SEEK_SET);
+
+  mem_size = atoi(argv[2]);
   block_size = atoi(argv[3]);
   num_runs = atoi(argv[4]);
-  int num_records = ram_size/block_size*(block_size/sizeof(Record));
 
-  phase1(fp, num_records);
+
+  /* All sizes in blocks */
+	file_size = fsize/block_size;
+
+  chunk_size = file_size/num_runs;
+  records_per_chunk = chunk_size*block_size/sizeof(Record);
+
+  last_chunk = file_size % num_runs;
+  records_in_last_chunk = last_chunk*block_size/sizeof(Record);
+
+
+  if ((chunk_size > mem_size) || ((chunk_size == mem_size) && (last_chunk > mem_size % block_size))){
+  	printf("Not enough runs \n");
+  	return 1;
+  }
+
+
+  phase1(fp);
 
   //pmms(fp);
   fclose(fp);
@@ -57,34 +84,36 @@ int main(int argc, char const *argv[])
 //pmms(FILE* fp)
 
 
-void phase1 (FILE* fp, int num_records){
-    fseek(fp, 0, SEEK_END);
-    long fsize = ftell(fp);
-    fseek(fp, 0, SEEK_SET);
+void phase1 (FILE* fp){
+	  FILE * fp_sorted;
+  	if (!(fp_sorted = fopen ("sorted.dat", "wb" )))
+    	exit(EXIT_FAILURE);
 
-    int num_chunks = fsize / num_runs;
-    int size_of_chunk = fsize / num_chunks;
+ 	  /* Allocate buffer for reading the file */
+ 		Record * buffer = (Record *) calloc (records_per_chunk, sizeof(Record));
 
-    int mem_used = 0;
+    /* Read file in chunks to the buffer */
+    int result = fread (buffer, sizeof(Record), records_per_chunk, fp);
 
-    while (mem_used < ram_size){
-        Record * buffer = (Record *) calloc (size_of_chunk, sizeof(Record));
-        qsort (buffer, num_records, sizeof(Record), compare);
-
-        mem_used += size_of_chunk;
-        if (mem_used > ram_size){
-            exit(EXIT_FAILURE);
-        }
-
-        free(buffer);
-    }
-    // Record * buffer = (Record *) calloc (num_records, sizeof(Record));
-    // int result = fread (buffer, sizeof(Record), num_records, fp);
-    // qsort (buffer, num_records, sizeof(Record), compare);
-    // while(buffer!=NULL){
-    //     printf(" %d\n", buffer->uid2);
-    //     buffer ++;
-    // }
-
-    //write(1, buffer, num_records);
+		while(result == records_per_chunk){
+			/* Sort in main memory */
+			qsort (buffer, records_per_chunk, sizeof(Record), compare);
+			/* Write sorted buffer to a new file */
+			fwrite(buffer, sizeof(Record), records_per_chunk, fp_sorted);
+			result = fread (buffer, sizeof(Record), records_per_chunk, fp);
+		}
+		/* Read last chunk */
+		if (last_chunk != 0){
+			int buf_size = last_chunk*block_size*sizeof(Record);
+			void * small_buffer = realloc(buffer, buf_size);
+			/* Sort in main memory */
+			qsort (small_buffer, records_per_chunk, sizeof(Record), compare);
+			/* Write sorted buffer to a new file */
+			fwrite(buffer, sizeof(Record), records_in_last_chunk, fp_sorted);
+		}
 }
+
+
+
+
+
