@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "Merge.h"
-// #include "InputBuffer.h"
 
 int mem_size;
 int block_size;
@@ -62,8 +61,17 @@ int main(int argc, char const *argv[])
   chunk_size = file_size/num_runs;
   records_per_chunk = chunk_size*block_size/sizeof(Record);
 
-  excess_blocks = file_size % num_runs;
+  /* So, instead of partitioning the file into k chunks and having
+    one extra chunk, it probably makes sense to hae exactly k chunks (for part 2).
 
+    My thoughts, might be a better way:
+    1. Calculate the remainder (extra blocks).
+    2. Add these extra blocks to chunk_size.
+    3. Calculate the new records_per_chunk.
+    4. Do calculations for exact size of the k-th chunk (this one won't hold the maximum).
+    5. In phase 1, it will now make an output file for each chunk.
+   */
+  excess_blocks = file_size % num_runs;
   if (excess_blocks != 0){
     chunk_size = chunk_size + excess_blocks;
     records_per_chunk = chunk_size*block_size/sizeof(Record);
@@ -71,9 +79,6 @@ int main(int argc, char const *argv[])
     last_chunk = file_size - (num_runs - 1) * chunk_size;
     records_in_last_chunk = last_chunk*block_size/sizeof(Record);
   }
-
-
-
 
   /* chunk size should be 1 block smaller than main memory size */
   if ((records_per_chunk > mem_size) || ((records_per_chunk == mem_size) && (records_in_last_chunk > mem_size % block_size))){
@@ -143,10 +148,11 @@ void phase2(FILE* fp){
   /*  */
   int total_input_buffers = num_runs + 1;
   /* total number of blocks per buffer */
-  int records_per_buffer = (mem_size/total_input_buffers) / block_size;
+  int buffer_size = (mem_size/total_input_buffers) / block_size;
+  int records_per_buffer = buffer_size / sizeof(Record)
 
   // for (int i = 0; i < num_runs; i++){
-
+    
   // }  
   /* read one block from each chunk and put it into buffers*/
 }
