@@ -17,6 +17,7 @@ int last_chunk;
 void read_into_buffer(FILE * fp, Record * buffer);
 void phase1 (FILE* fp);
 void print_buffer_content (Record * buffer);
+void phase2 ();
 
 /**
 * Compares two records a and b 
@@ -87,6 +88,7 @@ int main(int argc, char const *argv[])
   }
 
   phase1(fp);
+  phase2();
 
   //pmms(fp);
   fclose(fp);
@@ -144,17 +146,78 @@ void phase1 (FILE* fp){
 }
 
 
-void phase2(FILE* fp){
+void phase2(){
   /*  */
   int total_input_buffers = num_runs + 1;
   /* total number of blocks per buffer */
   int buffer_size = (mem_size/total_input_buffers) / block_size;
-  int records_per_buffer = buffer_size / sizeof(Record)
+  int records_per_buffer = buffer_size / sizeof(Record);
 
-  // for (int i = 0; i < num_runs; i++){
-    
-  // }  
+  HeapRecord * heap = (HeapRecord *) calloc (num_runs, sizeof(HeapRecord));
+  InputBuffer * inputBuffers = (InputBuffer *) calloc (num_runs, sizeof(InputBuffer));
+
+  char file_name[20];
+  for (int i = 1; i < num_runs + 1; i++){
+    InputBuffer temp;
+    sprintf(file_name, "output%d.dat", i);
+    temp.init(records_per_buffer, file_name);
+    inputBuffers[i] = temp;
+  }
+
+  // MergeManager manager;
+  // manager.heap = heap;
+  // manager.heapSize = 0;
+  // manager.heapCapacity = num_runs;
+  // FILE * inputFP;
+  // manager.inputFP = inputFP;
+  // FILE * outputFP;
+  // if (!(outputFP = fopen ("final_sorted.txt", "wb" ))){
+  //   exit(EXIT_FAILURE);
+  // }
+  // Record * outputBuffer = (Record *) calloc (buffer_size, sizeof(Record));
+  // manager.outputBuffer = outputBuffer;
+  // manager.currentPositionInOutputBuffer = 0;
+  // manager.outputBufferCapacity = records_per_buffer;
+  // manager.inputBuffers = inputBuffers;
+
+  // for (int i = 1; i < num_runs + 1; i++){
+  //   Record * temp;
+  //   int result = insertIntoHeap(&manager, i, temp);
+  //   printf("%d\n", result);
+  // }
+
+
+  // Record * result = (Record *) calloc (1, sizeof(Record));
+  // inputBuffers[0].getNext(result);
   /* read one block from each chunk and put it into buffers*/
+}
+
+bool InputBuffer::init(int maxCapacity, const std::string inputFileName){
+  const char * fname = inputFileName.c_str();
+  if (!(file = fopen (fname, "wb" ))){
+    return false;
+  }
+
+  buffer = (Record *) calloc (maxCapacity, sizeof(Record));
+  int result = fread (buffer, sizeof(Record), maxCapacity, file);
+  print_buffer_content(buffer);
+  capacity = maxCapacity;
+  currPositionInBuffer = 0;
+  totalElementsInBuffer = maxCapacity;
+  return true;
+}
+
+int InputBuffer::getNext(Record *result){
+  result = &buffer[currPositionInBuffer];
+  currPositionInBuffer ++;
+  totalElementsInBuffer --;
+  if (totalElementsInBuffer == 0){
+    int result = fread(buffer, sizeof(Record), capacity, file);
+    if (result == 0){
+      return 2;
+    }
+  }
+  return 1;
 }
 
 
@@ -164,4 +227,64 @@ void print_buffer_content (Record * buffer){
   }
 }
 
+// int getTopHeapElement (MergeManager *merger, HeapRecord *result) {
+//   Record item;
+//   int child, parent;
+
+//   if(merger->heapSize == 0) {
+//     printf( "UNEXPECTED ERROR: popping top element from an empty heap\n");
+//     return 1;
+//   }
+
+//   *result=merger->heap[0];  //to be returned
+
+//   //now we need to reorganize heap - keep the smallest on top
+//   item = merger->heap [-- merger->heapSize]; // to be reinserted 
+
+//   parent =0;
+
+//   while ((child = (2 * parent) + 1) < merger->currentHeapSize) {
+//     // if there are two children, compare them 
+//     if (child + 1 < merger->heapSize && (compare((void *)&(merger->heap[child]),(void *)&(merger->heap[child + 1]))>0)) {
+//       ++child;
+//     }
+//     // compare item with the larger 
+//     if (compare((void *)&item, (void *)&(merger->heap[child]))>0) {
+//       merger->heap[parent] = merger->heap[child];
+//       parent = child;
+//     } else {
+//       break;
+//     }
+//   }
+//   merger->heap[parent] = item;
+  
+//   return 0;
+// }
+
+int insertIntoHeap (MergeManager *merger, int run_id, Record *record) {
+  HeapRecord hrecord;
+  hrecord.uid1 = record ->uid1;
+  hrecord.uid2 = record ->uid2;
+  hrecord.run_id = run_id;
+  
+  int child, parent;
+  if (merger->heapSize == merger->heapCapacity) {
+    printf( "Unexpected ERROR: heap is full\n");
+    return 1;
+  } 
+    
+  child = merger->heapSize++; /* the next available slot in the heap */
+  
+  while (child > 0) {
+    parent = (child - 1) / 2;
+    if (compare((void *)&(merger->heap[parent]),(void *)&hrecord)>0) {
+      merger->heap[child] = merger->heap[parent];
+      child = parent;
+    } else  {
+      break;
+    }
+  }
+  merger->heap[child]= hrecord;  
+  return 0;
+}
 
