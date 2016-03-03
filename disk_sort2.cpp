@@ -177,6 +177,7 @@ void phase2(){
         exit(EXIT_FAILURE);
   }
 
+	/* should output buffer go here?*/
   Buffer* buffer_list[num_runs];
 
   /* heap */
@@ -192,6 +193,7 @@ void phase2(){
     buffer_list[i-1] = initBuffer(fp, i, buffer_records);
 
     /* read buffer_records from each input file into respective buffer */
+    /*THIS DOESN'T WORK. BUFFER HAS BAD VALUES*/
     fread (buffer_list[i-1]->buffer, sizeof(Record), buffer_records, buffer_list[i-1]->fp);
     
     /* Initialize heap */
