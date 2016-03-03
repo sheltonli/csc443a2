@@ -22,6 +22,7 @@ typedef struct inputBuffer{
 } Buffer;
 
 
+long fsize;
 int block_size;
 int mem_size;
 int num_runs;
@@ -72,7 +73,7 @@ int main(int argc, char const *argv[])
   }
 
   fseek(fp, 0, SEEK_END);
-  long fsize = ftell(fp);
+  fsize = ftell(fp);
   fseek(fp, 0, SEEK_SET);
 
   mem_size = MB*atoi(argv[2]);
@@ -97,7 +98,10 @@ int main(int argc, char const *argv[])
   }
   records_per_chunk = chunk_blocks*records_in_block;
 
-  // phase1(fp);
+  //phase1(fp);
+  printf("file size: %li\n", fsize);
+  printf("file block size: %d\n", block_size);
+  printf("file size in blocks: %d\n", file_blocks);
   phase2();
   fclose(fp);
 
@@ -150,18 +154,20 @@ void phase1 (FILE* fp){
       fclose(fp_sorted);
       free(small_buffer);
     }
+    
 }
 
 
 void phase2(){
-  int min = HUGE_VAL;
+  int min = -1;
   int min_id;
   /* Number of Records that can fit onto out buffers given memeory limitation*/
-  int buffer_blocks = mem_size/num_runs+1;
+  /*+1 was added after dividing*/
+  int buffer_blocks = memory_blocks/(num_runs+1);
   printf("buffer_blocks: %d\n", buffer_blocks);
   printf("mem_size: %d\n", mem_size);
-
-  long buffer_records = buffer_blocks*records_in_block;
+  printf("mem_blocks: %d\n", memory_blocks);
+  int buffer_records = buffer_blocks*records_in_block;
   printf("records_in_block: %d\n", records_in_block);
 
   printf("Number of records in each buffer: %ld\n", buffer_records);
