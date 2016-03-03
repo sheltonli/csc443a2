@@ -42,6 +42,7 @@ void read_into_buffer(FILE * fp, Record * buffer);
 void phase1 (FILE* fp);
 void print_buffer_content (Record * buffer);
 void phase2 ();
+void phase3 ();
 Buffer* initBuffer(FILE*fp, int id, long total_elem);
 
 
@@ -103,6 +104,7 @@ int main(int argc, char const *argv[])
   printf("file block size: %d\n", block_size);
   printf("file size in blocks: %d\n", file_blocks);
   phase2();
+  phase3();
   fclose(fp);
 
   return 0;
@@ -133,10 +135,6 @@ void phase1 (FILE* fp){
       result = fread (buffer, sizeof(Record), records_per_chunk, fp);
       count ++;
       fclose(fp_sorted);
-      if (count > 10){
-        printf("oops 3tricky5me");
-        break;
-      }
     }
 
     int last_chunk_records = file_records - (count-1)*records_per_chunk; 
@@ -159,8 +157,6 @@ void phase1 (FILE* fp){
 
 
 void phase2(){
-  int min = -1;
-  int min_id;
   /* Number of Records that can fit onto out buffers given memeory limitation*/
   /*+1 was added after dividing*/
   int buffer_blocks = memory_blocks/(num_runs+1);
@@ -201,6 +197,9 @@ void phase2(){
     heap_size ++;
   }
 
+  int min = heap[0].uid2;
+  int min_id;
+
   Record* out_buf = (Record*)calloc(buffer_records, sizeof(Record));
   int outputBufCurPos = 0;
 
@@ -208,15 +207,15 @@ void phase2(){
     /*for each buffer in a buffer list, 
     find smallest value and add to output buffer */
     for(int j = 0; j < num_runs; j++){
-      if (heap[j].uid2 < min){
+      if (heap[j].uid2 <= min){
         min = heap[j].uid2;
         min_id = j;
       }
     }
-
     /* get currentBufferPosition of buffer that contains smallest element in heap*/
     /* write to output buffer the smallest record */
     out_buf[outputBufCurPos] = buffer_list[min_id]->buffer[buffer_list[min_id]->currentBufferPosition];
+    
     /* increment buffer positions of both output buffer and buffer that had smallest element */
     outputBufCurPos ++;
     buffer_list[min_id]->currentBufferPosition++;
@@ -225,19 +224,26 @@ void phase2(){
       if so, read from file and replace element in heap with next item
       else just replace with next item in buffer 
       reset buffer position */
-    if (buffer_list[min_id]->currentBufferPosition >= buffer_list[min_id]->totalElements){
-      fread (buffer_list[min_id]->buffer, sizeof(Record), buffer_records, buffer_list[min_id]->fp);
+    if (buffer_list[min_id]->currentBufferPosition >= buffer_records){
+      int result = fread (buffer_list[min_id]->buffer, sizeof(Record), buffer_records, buffer_list[min_id]->fp);
       buffer_list[min_id]->currentBufferPosition = 0;
+      if (result == 0){
+        break;
+      }
     }
-    heap[min_id] = buffer_list[min_id]->buffer[buffer_list[min_id]->currentBufferPosition];
+
+    Record temp = buffer_list[min_id]->buffer[buffer_list[min_id]->currentBufferPosition];
+    heap[min_id] = temp;
+
+    /* reset min */
+    min = heap[0].uid2;
+
     /* NEED SOME WAY OF HANDLING heap_size
     my idea was to subtract 1 from heap_size once it can't read anymore
     ie. getting a NULL record? not sure how to check null 
-
     since i keep elements of heap in place, might need to do a check in 
     min calculation that skips if the record is null*/
 
-    
     /* check if output buffer is full, then do write 
       rest output buffer position */
     if (outputBufCurPos >= buffer_records){
@@ -250,6 +256,19 @@ void phase2(){
     outputBufCurPos should be equal to # of records to be written*/
   if (outputBufCurPos > 0){
     fwrite(out_buf, sizeof(Record), outputBufCurPos, out_file);
+  }
+}
+
+void phase3(){
+  FILE * fp;
+  if (!(fp = fopen ("out_file.dat", "rb" ))){
+    exit(EXIT_FAILURE);
+  }
+  Record* buf = (Record*)calloc (file_records, sizeof(Record));
+  fread (buf, sizeof(Record), file_records, fp);
+
+  for (int i = 0; i < file_records; i++){
+    printf("UID1: %d UID2: %d\n", buf[i].uid1, buf[i].uid2);
   }
 }
 
